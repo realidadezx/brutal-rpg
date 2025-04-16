@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ficha Brutal RPG + Sistema de Dados D6</title>
+  <style>
+    body { 
+      background: #222; 
+      color: #eee; 
+      font-family: sans-serif; 
+      padding: 20px; 
+      background-image: url('https://www.transparenttextures.com/patterns/black-linen.png'); 
+      background-size: cover;
+    }
+    h1, h2 { color: #c00; text-align: center; }
+    .atributo { margin: 5px 0; }
+    .ficha { 
+      border: 2px solid #900; 
+      padding: 20px; 
+      border-radius: 8px; 
+      margin-bottom: 20px; 
+      background-color: rgba(0, 0, 0, 0.6);
+    }
+    label, .atributo, button { 
+      font-size: 16px; 
+      color: #eee;
+    }
+    input, select, textarea {
+      display: block; 
+      margin: 10px 0; 
+      padding: 8px; 
+      border: 2px solid #555; 
+      border-radius: 4px; 
+      background: #222; 
+      color: #eee; 
+      width: 300px;
+    }
+    button { 
+      background: #900; 
+      cursor: pointer; 
+      padding: 10px 20px; 
+      border-radius: 4px; 
+      border: none;
+    }
+    button:hover { 
+      background: #c00; 
+    }
+    .resultado {
+      margin-top: 20px;
+      font-size: 24px;
+      font-weight: bold;
+      color: #c00;
+    }
+    .fichas-salvas {
+      margin-top: 20px;
+    }
+    .ficha-salva { 
+      margin-bottom: 15px; 
+      padding: 10px; 
+      border: 2px solid #900; 
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.6);
+    }
+    .dado-imagem {
+      width: 40px; 
+      height: 40px;
+      margin-right: 5px;
+    }
+    #ficha-logo {
+      width: 120px;
+      margin: 20px auto;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <h1>🩸 Ficha Brutal RPG + Sistema de Dados D6</h1>
+  <img id="ficha-logo" src="https://www.example.com/logo.png" alt="Brutal RPG Logo">
+
+  <div class="ficha">
+    <label>Nome: <input type="text" id="nome"></label>
+    <label>Idade: <input type="number" id="idade"></label>
+
+    <label>Arquétipo:
+      <select id="arquetipo" onchange="atualizarAtributos()">
+        <option value="">Escolha...</option>
+        <option value="atleta">Atleta</option>
+        <option value="cetico">Cético</option>
+        <option value="esbelto">Esbelto</option>
+        <option value="heroi">Herói</option>
+        <option value="nerd">Nerd</option>
+        <option value="inocente">Inocente</option>
+        <option value="relaxado">Relaxado</option>
+        <option value="valentona">Valentona</option>
+      </select>
+    </label>
+
+    <h2>Atributos</h2>
+    <div class="atributo">Força: <span id="forca">0</span></div>
+    <div class="atributo">Agilidade: <span id="agilidade">0</span></div>
+    <div class="atributo">Astúcia: <span id="astucia">0</span></div>
+    <div class="atributo">Vigor: <span id="vigor">0</span></div>
+    <div class="atributo">Carisma: <span id="carisma">0</span></div>
+
+    <h3>Shots: <span id="shots">0</span></h3> <!-- Display de Shots -->
+    <h3>Pontos de Tensão: <span id="pontoTensao">0</span></h3> <!-- Display de Ponto de Tensão -->
+    
+    <!-- Modificar Ponto de Tensão -->
+    <button onclick="alterarPontoTensao(-1)">Diminuir Ponto de Tensão</button>
+    <button onclick="alterarPontoTensao(1)">Aumentar Ponto de Tensão</button>
+
+    <label>História:
+      <textarea id="historia" rows="4"></textarea>
+    </label>
+
+    <button onclick="salvarFicha()">Salvar Ficha</button>
+  </div>
+
+  <h2>🗂️ Fichas Salvas</h2>
+  <div id="fichasSalvas" class="fichas-salvas"></div>
+
+  <h2>🎲 Sistema de Dados</h2>
+
+  <label>Escolha a Ficha para Usar:
+    <select id="fichaSelecionada" onchange="atualizarAtributosFichaSelecionada()">
+      <option value="">Escolha uma ficha salva</option>
+    </select>
+  </label>
+
+  <label>Escolha o Atributo para Rolar:
+    <select id="atributoSelecionado">
+      <option value="forca">Força</option>
+      <option value="agilidade">Agilidade</option>
+      <option value="astucia">Astúcia</option>
+      <option value="vigor">Vigor</option>
+      <option value="carisma">Carisma</option>
+    </select>
+  </label>
+
+  <label>Quantos Dados? 
+    <input type="number" id="quantidadeDados" value="1" min="1" max="6">
+  </label>
+
+  <button onclick="rolarDados()">Rolar Dados D6</button>
+
+  <div class="resultado" id="resultado">Resultado aparecerá aqui</div>
+
+  <script>
+    const arquetipos = {
+      atleta: ["forca", "agilidade"],
+      cetico: ["astucia", "vigor"],
+      esbelto: ["carisma", "vigor"],
+      heroi: ["astucia", "forca"],
+      nerd: ["astucia", "agilidade"],
+      inocente: ["astucia", "carisma"],
+      relaxado: ["carisma", "agilidade"],
+      valentona: ["forca", "vigor"]
+    };
+
+    let fichas = JSON.parse(localStorage.getItem("fichas")) || [];
+
+    function atualizarAtributos() {
+      const selecionado = document.getElementById("arquetipo").value;
+      let atributos = {
+        forca: 0, agilidade: 0, astucia: 0, vigor: 0, carisma: 0
+      };
+
+      if (arquetipos[selecionado]) {
+        arquetipos[selecionado].forEach(attr => {
+          atributos[attr] += 1;
+        });
+      }
+
+      for (let chave in atributos) {
+        document.getElementById(chave).textContent = atributos[chave];
+      }
+    }
+
+    function salvarFicha() {
+      const nome = document.getElementById("nome").value;
+      const idade = document.getElementById("idade").value;
+      const arquetipo = document.getElementById("arquetipo").value;
+      const historia = document.getElementById("historia").value;
+
+      if (!nome || !arquetipo) {
+        alert("Preencha o nome e escolha um arquétipo.");
+        return;
+      }
+
+      const atributos = {
+        forca: document.getElementById("forca").textContent,
+        agilidade: document.getElementById("agilidade").textContent,
+        astucia: document.getElementById("astucia").textContent,
+        vigor: document.getElementById("vigor").textContent,
+        carisma: document.getElementById("carisma").textContent
+      };
+
+      // Atributos de Shots e Ponto de Tensão
+      const shots = 0;  // Valor inicial de Shots
+      const pontoTensao = 0;  // Ponto de tensão começa zerado
+
+      const ficha = { nome, idade, arquetipo, atributos, historia, shots, pontoTensao };
+
+      fichas.push(ficha);
+      localStorage.setItem("fichas", JSON.stringify(fichas));
+
+      listarFichas();
+    }
+
+    function listarFichas() {
+      const container = document.getElementById("fichasSalvas");
+      const fichaSelecionada = document.getElementById("fichaSelecionada");
+      container.innerHTML = "";
+      fichaSelecionada.innerHTML = '<option value="">Escolha uma ficha salva</option>'; // Clear options
+
+      fichas.forEach((ficha, index) => {
+        const div = document.createElement("div");
+        div.classList.add("ficha-salva");
+        div.innerHTML = ` 
+          <strong>${ficha.nome}</strong> (${ficha.idade} anos) — ${ficha.arquetipo}<br>
+          Força: ${ficha.atributos.forca} | Agilidade: ${ficha.atributos.agilidade} | Astúcia: ${ficha.atributos.astucia} | 
+          Vigor: ${ficha.atributos.vigor} | Carisma: ${ficha.atributos.carisma}<br>
+          <em>História:</em> ${ficha.historia}<br>
+          <em>Shots:</em> ${ficha.shots} | <em>Pontos de Tensão:</em> ${ficha.pontoTensao}<br>
+          <button onclick="adicionarShot(${index})">Adicionar Shot</button> | 
+          <button onclick="excluirFicha(${index})">Excluir</button>
+        `;
+        container.appendChild(div);
+
+        const option = document.createElement("option");
+        option.value = index;
+        option.textContent = ficha.nome;
+        fichaSelecionada.appendChild(option);
+      });
+    }
+
+    function excluirFicha(index) {
+      fichas.splice(index, 1);
+      localStorage.setItem("fichas", JSON.stringify(fichas));
+      listarFichas();
+    }
+
+    function adicionarShot(index) {
+      const ficha = fichas[index];
+      ficha.shots++;
+
+      if (ficha.shots >= 6) {
+        ficha.shots = 0; // Reset Shots
+        ficha.pontoTensao++; // Adiciona 1 ponto de tensão
+        if (ficha.pontoTensao > 10) {
+          ficha.pontoTensao = 10; // Limita o Ponto de Tensão a 10
+        }
+      }
+
+      localStorage.setItem("fichas", JSON.stringify(fichas));
+      listarFichas();
+    }
+
+    function alterarPontoTensao(valor) {
+      const fichaIndex = parseInt(document.getElementById("fichaSelecionada").value);
+      if (isNaN(fichaIndex)) {
+        alert("Escolha uma ficha salva para alterar o ponto de tensão.");
+        return;
+      }
+
+      const ficha = fichas[fichaIndex];
+      ficha.pontoTensao += valor;
+
+      if (ficha.pontoTensao < 0) {
+        ficha.pontoTensao = 0; // Não permite valores negativos
+      } else if (ficha.pontoTensao > 10) {
+        ficha.pontoTensao = 10; // Limita o Ponto de Tensão a 10
+      }
+
+      localStorage.setItem("fichas", JSON.stringify(fichas));
+      listarFichas();
+    }
+
+    function atualizarAtributosFichaSelecionada() {
+      const fichaIndex = parseInt(document.getElementById("fichaSelecionada").value);
+      if (isNaN(fichaIndex)) return;
+
+      const ficha = fichas[fichaIndex];
+      const atributoSelecionado = document.getElementById("atributoSelecionado").value;
+      const valorAtributo = ficha.atributos[atributoSelecionado];
+
+      // Exibe o valor do atributo selecionado
+      console.log(`Valor do atributo ${atributoSelecionado}: ${valorAtributo}`);
+    }
+
+    function rolarDados() {
+      const quantidade = Math.min(6, parseInt(document.getElementById("quantidadeDados").value));
+      const fichaIndex = parseInt(document.getElementById("fichaSelecionada").value);
+      const atributoSelecionado = document.getElementById("atributoSelecionado").value;
+
+      if (isNaN(fichaIndex)) {
+        alert("Escolha uma ficha salva para rolar os dados.");
+        return;
+      }
+
+      const ficha = fichas[fichaIndex];
+      const atributoValor = parseInt(ficha.atributos[atributoSelecionado]);
+
+      let resultado = [];
+      let soma = 0;
+
+      for (let i = 0; i < quantidade; i++) {
+        const dado = Math.floor(Math.random() * 6) + 1;
+        resultado.push(dado);
+        soma += dado;
+      }
+
+      const resultadoTexto = `Rolando ${quantidade} dados de 6 lados: 
+        ${resultado.map(d => `<img class="dado-imagem" src="https://www.example.com/dados/${d}.png" alt="Dado">`).join(' ')}
+        <br>Soma: ${soma + atributoValor}`;
+
+      document.getElementById("resultado").innerHTML = resultadoTexto;
+    }
+
+    // Carrega fichas salvas ao inicializar
+    listarFichas();
+  </script>
+</body>
+</html>
